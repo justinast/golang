@@ -23,7 +23,7 @@ type SensorState struct {
 
 func New(region string, credentials *credentials.Credentials) SensorSnsNotifier {
 	sess, err := session.NewSession(&aws.Config{
-		Region:      aws.String("eu-west-1"),
+		Region:      aws.String(region),
 		Credentials: credentials,
 	})
 	if err != nil {
@@ -35,7 +35,7 @@ func New(region string, credentials *credentials.Credentials) SensorSnsNotifier 
 	return s
 }
 
-func (n SensorSnsNotifier) publishSensorStateToSns(state SensorState) {
+func (n SensorSnsNotifier) PublishSensorStateToSns(state SensorState) {
 	input := &sns.PublishInput{
 		MessageAttributes: map[string]*sns.MessageAttributeValue{
 			"ts": &sns.MessageAttributeValue{
