@@ -14,11 +14,13 @@ type SensorSnsNotifier struct {
 }
 
 type SensorState struct {
+	Timestamp   int64
 	Id          string
 	Name        string
 	MeasureName string
-	Value       float64
-	Timestamp   int64
+	ValueType   string
+	ValueF      float64
+	ValueB      bool
 }
 
 func New(region string, credentials *credentials.Credentials) SensorSnsNotifier {
@@ -36,35 +38,44 @@ func New(region string, credentials *credentials.Credentials) SensorSnsNotifier 
 }
 
 func (n SensorSnsNotifier) PublishSensorStateToSns(state SensorState) {
-	input := &sns.PublishInput{
-		MessageAttributes: map[string]*sns.MessageAttributeValue{
-			"ts": &sns.MessageAttributeValue{
-				DataType:    aws.String("String"),
-				StringValue: aws.String(strconv.FormatInt(state.Timestamp, 10)),
-			},
-			"sensorId": &sns.MessageAttributeValue{
-				DataType:    aws.String("String"),
-				StringValue: aws.String(state.Id),
-			},
-			"sensorName": &sns.MessageAttributeValue{
-				DataType:    aws.String("String"),
-				StringValue: aws.String(state.Name),
-			},
-			"measureName": &sns.MessageAttributeValue{
-				DataType:    aws.String("String"),
-				StringValue: aws.String(state.MeasureName),
-			},
-			"state": &sns.MessageAttributeValue{
-				DataType:    aws.String("String"),
-				StringValue: aws.String(strconv.FormatFloat(state.Value, 'f', 1, 64)),
-			},
-			"type": &sns.MessageAttributeValue{
-				DataType:    aws.String("String"),
-				StringValue: aws.String("float"),
-			},
+	ma := map[string]*sns.MessageAttributeValue{
+		"ts": &sns.MessageAttributeValue{
+			DataType:    aws.String("String"),
+			StringValue: aws.String(strconv.FormatInt(state.Timestamp, 10)),
 		},
-		Message:  aws.String("{\"message\":\"Sensor state\"}"),
-		TopicArn: aws.String("arn:aws:sns:eu-west-1:310819670781:HomeSensorIncomingData"),
+		"sensorId": &sns.MessageAttributeValue{
+			DataType:    aws.String("String"),
+			StringValue: aws.String(state.Id),
+		},
+		"sensorName": &sns.MessageAttributeValue{
+			DataType:    aws.String("String"),
+			StringValue: aws.String(state.Name),
+		},
+		"measureName": &sns.MessageAttributeValue{
+			DataType:    aws.String("String"),
+			StringValue: aws.String(state.MeasureName),
+		},
+	}
+
+	if state.ValueType == "float" {
+		ma["state"] = &sns.MessageAttributeValue{
+			DataType:    aws.String("String"),
+			StringValue: aws.String(strconv.FormatFloat(state.ValueF, 'f', 1, 64)),
+		}
+		ma["type"] = &sns.MessageAttributeValue{
+			DataType:    aws.String("String"),
+			StringValue: aws.String("float"),
+		}
+	} else if state.ValueType == "bool" {
+		panic("to implement")
+	} else {
+		panic("Unknown value type: " + state.ValueType)
+	}
+
+	input := &sns.PublishInput{
+		MessageAttributes: ma,
+		Message:           aws.String("{\"message\":\"Sensor state\"}"),
+		TopicArn:          aws.String("arn:aws:sns:eu-west-1:310819670781:HomeSensorIncomingData"),
 	}
 
 	_, err := sns.New(n.session).Publish(input)
