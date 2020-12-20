@@ -12,10 +12,11 @@ import (
 )
 
 type SensorSnsNotifier struct {
-	session *session.Session
+	session  *session.Session
+	topicArn string
 }
 
-func New(region string, credentials *credentials.Credentials) SensorSnsNotifier {
+func New(region string, credentials *credentials.Credentials, topicArn string) SensorSnsNotifier {
 	sess, err := session.NewSession(&aws.Config{
 		Region:      aws.String(region),
 		Credentials: credentials,
@@ -24,7 +25,7 @@ func New(region string, credentials *credentials.Credentials) SensorSnsNotifier 
 		panic(err)
 	}
 
-	s := SensorSnsNotifier{session: sess}
+	s := SensorSnsNotifier{session: sess, topicArn: topicArn}
 
 	return s
 }
@@ -78,7 +79,7 @@ func (n SensorSnsNotifier) PublishSensorStateToSns(state sensor.SensorState) {
 	input := &sns.PublishInput{
 		MessageAttributes: ma,
 		Message:           aws.String("{\"message\":\"Sensor state\"}"),
-		TopicArn:          aws.String("arn:aws:sns:eu-west-1:310819670781:HomeSensorIncomingData"),
+		TopicArn:          aws.String(n.topicArn),
 	}
 
 	_, err := sns.New(n.session).Publish(input)
