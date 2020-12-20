@@ -7,28 +7,42 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
+
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/service/dynamodb"
+	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 )
 
 type Salus struct {
-	credentials Credentials
-	token string
-	deviceId string
-	deviceValues DeviceValues
+	credentials          Credentials
+	dynamoDB             *dynamodb.DynamoDB
+	credentialsCacheTime int64
+	token                string
+	deviceId             string
+	deviceValues         DeviceValues
 }
 
 type Credentials struct {
-	Email string
+	Email    string
 	Password string
 }
 
 type DeviceValues struct {
-	Temperature float64 		`json:"CH1currentRoomTemp,string"`
-	SetPoint float64 			`json:"CH1currentSetPoint,string"`
-	HeaterStatusString string	`json:"CH1heatOnOffStatus"`
-	HeaterStatus bool
-	Initiated bool
+	Temperature        float64 `json:"CH1currentRoomTemp,string"`
+	SetPoint           float64 `json:"CH1currentSetPoint,string"`
+	HeaterStatusString string  `json:"CH1heatOnOffStatus"`
+	HeaterStatus       bool
+	Initiated          bool
+}
+
+type salusCredentialsCache struct {
+	Key      string
+	DeviceId string
+	Token    string
+	Expires  int64
 }
 
 //// @todo delete
@@ -42,9 +56,11 @@ type DeviceValues struct {
 //	return Credentials{email: "email", password: "pass"}
 //}
 
-func New(credentials Credentials) Salus {
+func New(credentials Credentials, dynamoDB *dynamodb.DynamoDB, credentialsCacheTime int64) Salus {
 	salus := Salus{
-		credentials: credentials,
+		credentials:          credentials,
+		dynamoDB:             dynamoDB,
+		credentialsCacheTime: credentialsCacheTime,
 	}
 
 	return salus
@@ -103,9 +119,14 @@ func (s *Salus) InitTokenAndDeviceId() {
 		return
 	}
 
+	s.fillDeviceIdAndTokenFromCache()
+	if s.token != "" && s.deviceId != "" {
+		return
+	}
+
 	client := &http.Client{}
 
-	resp, err := client.Get("https://salus-it500.com/public/login.php?");
+	resp, err := client.Get("https://salus-it500.com/public/login.php?")
 	if err != nil {
 		panic(err)
 	}
@@ -165,4 +186,54 @@ func (s *Salus) InitTokenAndDeviceId() {
 
 	re = regexp.MustCompile("<input id=\"token\" name=\"token\" type=\"hidden\" value=\"(\\d+-[a-zA-Z0-9]+)\" />")
 	s.token = string(re.FindSubmatch(bodyBytes)[1])
+
+	s.cacheDeviceIdAndToken()
+}
+
+func (s *Salus) cacheDeviceIdAndToken() {
+	i := salusCredentialsCache{
+		Key:      "salus-credentials",
+		DeviceId: s.deviceId,
+		Token:    s.token,
+	}
+	i.Expires = time.Now().Unix() + s.credentialsCacheTime
+
+	av, err := dynamodbattribute.MarshalMap(i)
+	if err != nil {
+		panic(err)
+	}
+
+	input := &dynamodb.PutItemInput{
+		Item:      av,
+		TableName: aws.String("Cache"),
+	}
+	_, err = s.dynamoDB.PutItem(input)
+	if err != nil {
+		panic(err)
+	}
+}
+
+func (s *Salus) fillDeviceIdAndTokenFromCache() {
+	result, err := s.dynamoDB.GetItem(&dynamodb.GetItemInput{
+		TableName: aws.String("Cache"),
+		Key: map[string]*dynamodb.AttributeValue{
+			"Key": {
+				S: aws.String("salus-credentials"),
+			},
+		},
+	})
+	if err != nil {
+		panic(err)
+	}
+
+	if result.Item != nil {
+		exp, _ := strconv.ParseInt(*result.Item["Expires"].N, 10, 64)
+		if exp <= time.Now().Unix() {
+			// cache expired
+			return
+		}
+
+		s.deviceId = *result.Item["DeviceId"].S
+		s.token = *result.Item["Token"].S
+	}
 }

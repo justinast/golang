@@ -4,10 +4,15 @@ import (
 	"os"
 	"strconv"
 	"testing"
+
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/dynamodb"
 )
 
 func TestGetTemperature(t *testing.T) {
-	salus := New(getCredentials())
+	salus := New(getCredentials(), getDynamoDB(), 10)
 
 	expTemp, err := strconv.ParseFloat(os.Getenv("EXP_TEMP"), 64)
 	if err != nil {
@@ -21,7 +26,7 @@ func TestGetTemperature(t *testing.T) {
 }
 
 func TestGetSetPoint(t *testing.T) {
-	salus := New(getCredentials())
+	salus := New(getCredentials(), getDynamoDB(), 10)
 
 	expSP, err := strconv.ParseFloat(os.Getenv("EXP_SET_POINT"), 64)
 	if err != nil {
@@ -35,7 +40,7 @@ func TestGetSetPoint(t *testing.T) {
 }
 
 func TestIsHeating(t *testing.T) {
-	salus := New(getCredentials())
+	salus := New(getCredentials(), getDynamoDB(), 10)
 
 	expIsHeating := false
 	if os.Getenv("EXP_IS_HEATING") == "1" {
@@ -52,4 +57,16 @@ func TestIsHeating(t *testing.T) {
 
 func getCredentials() Credentials {
 	return Credentials{Email: os.Getenv("SALUS_EMAIL"), Password: os.Getenv("SALUS_PASSWORD")}
+}
+
+func getDynamoDB() *dynamodb.DynamoDB {
+	sess, err := session.NewSession(&aws.Config{
+		Region:      aws.String("eu-west-1"),
+		Credentials: credentials.NewStaticCredentials(os.Getenv("AWS_KEY"), os.Getenv("AWS_SECRET"), ""),
+	})
+	if err != nil {
+		panic(err)
+	}
+
+	return dynamodb.New(sess)
 }
