@@ -67,7 +67,18 @@ func (n SensorSnsNotifier) PublishSensorStateToSns(state SensorState) {
 			StringValue: aws.String("float"),
 		}
 	} else if state.ValueType == "bool" {
-		panic("to implement")
+		s := "true"
+		if state.ValueB == false {
+			s = "false"
+		}
+		ma["state"] = &sns.MessageAttributeValue{
+			DataType:    aws.String("String"),
+			StringValue: aws.String(s),
+		}
+		ma["type"] = &sns.MessageAttributeValue{
+			DataType:    aws.String("String"),
+			StringValue: aws.String("bool"),
+		}
 	} else {
 		panic("Unknown value type: " + state.ValueType)
 	}
