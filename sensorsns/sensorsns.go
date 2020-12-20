@@ -3,6 +3,8 @@ package sensorsns
 import (
 	"strconv"
 
+	"github.com/justinast/golang/sensor"
+
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -11,16 +13,6 @@ import (
 
 type SensorSnsNotifier struct {
 	session *session.Session
-}
-
-type SensorState struct {
-	Timestamp   int64
-	Id          string
-	Name        string
-	MeasureName string
-	ValueType   string
-	ValueF      float64
-	ValueB      bool
 }
 
 func New(region string, credentials *credentials.Credentials) SensorSnsNotifier {
@@ -37,7 +29,7 @@ func New(region string, credentials *credentials.Credentials) SensorSnsNotifier 
 	return s
 }
 
-func (n SensorSnsNotifier) PublishSensorStateToSns(state SensorState) {
+func (n SensorSnsNotifier) PublishSensorStateToSns(state sensor.SensorState) {
 	ma := map[string]*sns.MessageAttributeValue{
 		"ts": &sns.MessageAttributeValue{
 			DataType:    aws.String("String"),
