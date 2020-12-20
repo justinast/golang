@@ -84,6 +84,31 @@ func (s *Salus) GetIsHeating() bool {
 	return s.deviceValues.HeaterStatus
 }
 
+func (s *Salus) SetTarget(t float64) {
+	s.InitTokenAndDeviceId()
+
+	client := &http.Client{}
+
+	tf := fmt.Sprintf("%.1f", t)
+
+	form := url.Values{}
+	form.Add("token", s.token)
+	form.Add("tempUnit", "0")
+	form.Add("devId", s.deviceId)
+	form.Add("current_tempZ1_set", "1")
+	form.Add("current_tempZ1", tf)
+
+	req, err := http.NewRequest("POST", "https://salus-it500.com/includes/set.php", strings.NewReader(form.Encode()))
+	if err != nil {
+		panic(err)
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	_, err = client.Do(req)
+	if err != nil {
+		panic(err)
+	}
+}
+
 func (s *Salus) InitDeviceValues() {
 	if s.deviceValues.Initiated {
 		return

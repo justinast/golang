@@ -55,6 +55,15 @@ func TestIsHeating(t *testing.T) {
 	}
 }
 
+func TestSetTarget(t *testing.T) {
+	salus := New(getCredentials(), getDynamoDB(), 10)
+
+	if os.Getenv("SET_TARGET") != "" {
+		f, _ := strconv.ParseFloat(os.Getenv("SET_TARGET"), 64)
+		salus.SetTarget(f)
+	}
+}
+
 func getCredentials() Credentials {
 	return Credentials{Email: os.Getenv("SALUS_EMAIL"), Password: os.Getenv("SALUS_PASSWORD")}
 }
