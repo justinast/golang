@@ -1,6 +1,7 @@
 package sensorsns
 
 import (
+	"log"
 	"strconv"
 
 	"github.com/justinast/golang/sensor"
@@ -31,6 +32,9 @@ func New(region string, credentials *credentials.Credentials, topicArn string) S
 }
 
 func (n SensorSnsNotifier) PublishSensorStateToSns(state sensor.SensorState) {
+	log.Println("Publishing sensor state to SNS")
+	log.Println(state)
+
 	ma := map[string]*sns.MessageAttributeValue{
 		"ts": &sns.MessageAttributeValue{
 			DataType:    aws.String("String"),
