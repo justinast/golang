@@ -32,7 +32,7 @@ func New(region string, credentials *credentials.Credentials, topicArn string) S
 }
 
 func (n SensorSnsNotifier) PublishSensorStateToSns(state sensor.SensorState) {
-	log.Println("Publishing sensor state to SNS")
+	log.Println("Publishing sensor state to SNS, topic " + n.topicArn)
 	log.Println(state)
 
 	ma := map[string]*sns.MessageAttributeValue{
